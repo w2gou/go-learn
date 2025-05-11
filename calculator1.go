@@ -3,51 +3,52 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
-	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
-func main() {
-	//startServer()
-	startCalculatorServer()
-}
-
-func startServer() {
-	//http.HandleFunc("/", handler)      // each request calls handler
-	http.HandleFunc("/count", counter) // each request calls handler
-	log.Fatal(http.ListenAndServe("localhost:8010", nil))
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "URL.Path = %q\n", r.URL.Path)
-}
-
-func counter(w http.ResponseWriter, r *http.Request) {
-	// 1. 检查请求方法是否为POST
-	if r.Method != http.MethodPost {
-		http.Error(w, "只支持POST请求", http.StatusMethodNotAllowed)
-		return
+func startCalculatorServer() {
+	fmt.Println("计算器服务已启动！")
+	for true {
+		fmt.Println("请输入命令：")
+		inputs := getInputs()
+		if inputs != nil {
+			caseCommandForCalculator(inputs)
+		}
 	}
+}
 
+func getInputs() []string {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	if !scanner.Scan() {
 		fmt.Println("错误：读取输入失败")
-		return
+		return nil
 	}
 
+	input := strings.TrimSpace(scanner.Text())
+	if input == "" {
+		fmt.Println("错误：输入为空")
+		return nil
+	}
+
+	parts := strings.Fields(input) // 自动处理多个空格
+
 	// 检查参数数量是否足够
-	if len(os.Args) < 3 {
+	if len(parts) != 3 {
 		fmt.Println("用法：calc <命令> <数字1> <数字2> ...")
 		fmt.Println("支持命令：sum, subtract, product, divide")
 		os.Exit(1)
 	}
 
+	return parts
+}
+
+func caseCommandForCalculator(inputs []string) {
 	// 解析命令和参数
-	cmd := os.Args[1]
-	args := os.Args[2:]
+	cmd := inputs[0]
+	args := inputs[1:]
 
 	// 将参数转为浮点数
 	var numbers []float64
