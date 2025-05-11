@@ -1,1 +1,1 @@
-module day-2
+module go-learn

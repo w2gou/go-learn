@@ -1,4 +1,4 @@
-package main
+package calculator
 
 import (
 	"bufio"
@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-func startCalculatorServer() {
+func StartCalculator1() {
 	fmt.Println("计算器服务已启动！")
-	for true {
+	for {
 		fmt.Println("请输入命令：")
 		inputs := getInputs()
 		if inputs != nil {
