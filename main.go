@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"go-learn/calculator"
+	"go-learn/statistics"
 	"log"
 	"net/http"
 	"os"
@@ -13,7 +13,8 @@ import (
 func main() {
 	//startServer()
 	//calculator.StartCalculator1()
-	calculator.StartCalculator2()
+	//calculator.StartCalculator2()
+	statistics.StartStatistics1()
 }
 
 func startServer() {
