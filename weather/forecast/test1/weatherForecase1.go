@@ -1,4 +1,4 @@
-package forecast
+package test1
 
 import (
 	"bufio"
@@ -14,6 +14,7 @@ const (
 	GetProvinces = "provinces"
 	GetCities    = "cities"
 	GetZones     = "zones"
+	GetWeather   = "weather"
 )
 
 var commandMap = map[string]func(args []string){
@@ -21,10 +22,13 @@ var commandMap = map[string]func(args []string){
 		handleA() // 无参数函数
 	},
 	GetCities: func(args []string) {
-		handleB(args) // 传入第一个参数
+		handleB(args) // 传入参数
 	},
 	GetZones: func(args []string) {
-		handleC(args) // 传入第一个参数
+		handleC(args) // 传入参数
+	},
+	GetWeather: func(args []string) {
+		handleD(args) // 传入参数
 	},
 }
 
@@ -104,8 +108,8 @@ func getProvinces() error {
 		return nil
 	}
 
-	url := "https://www.weather.com.cn/data/city3jdata/china.html"
-	url = "http://www.nmc.cn/rest/weather?stationid=54433"
+	//url := "https://www.weather.com.cn/data/city3jdata/china.html"
+	url := "http://www.nmc.cn/rest/province"
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -118,14 +122,25 @@ func getProvinces() error {
 		return fmt.Errorf("读取响应失败: %w", err)
 	}
 
+	var provinces []Province
+	err = json.Unmarshal(body, &provinces)
+	if err != nil {
+		return fmt.Errorf("解析失败: %w", err)
+	}
+
+	provinceMap = make(map[string]string)
+	for _, province := range provinces {
+		provinceMap[province.Code] = province.Name
+	}
+
 	//err = json.Unmarshal(body, &provinceMap)
 	//if err != nil {
 	//	return fmt.Errorf("解析失败: %w", err)
 	//}
 
-	fmt.Printf("状态码: %d\n", resp.StatusCode)
-	fmt.Println("响应内容:")
-	fmt.Println(string(body))
+	//fmt.Printf("状态码: %d\n", resp.StatusCode)
+	//fmt.Println("响应内容:")
+	//fmt.Println(string(body))
 
 	return nil
 }
@@ -141,6 +156,7 @@ func getCities(newCode string) error {
 
 	baseUrl := "http://www.weather.com.cn/data/city3jdata/provshi/"
 	url := baseUrl + provinceCode + ".html"
+	url = "http://www.nmc.cn/rest/province/" + provinceCode
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -153,10 +169,21 @@ func getCities(newCode string) error {
 		return fmt.Errorf("读取响应失败: %w", err)
 	}
 
-	err = json.Unmarshal(body, &cityMap)
+	var cities []City
+	err = json.Unmarshal(body, &cities)
 	if err != nil {
 		return fmt.Errorf("解析失败: %w", err)
 	}
+
+	cityMap = make(map[string]string)
+	for _, city := range cities {
+		cityMap[city.Code] = city.City
+	}
+
+	//err = json.Unmarshal(body, &cityMap)
+	//if err != nil {
+	//	return fmt.Errorf("解析失败: %w", err)
+	//}
 
 	return nil
 }
@@ -188,6 +215,36 @@ func getZones(newCode string) error {
 	if err != nil {
 		return fmt.Errorf("解析失败: %w", err)
 	}
+
+	return nil
+}
+
+// 气象局api
+// 获取区天气数据
+func getWeatherData(newCode string) error {
+	baseUrl := "http://m.weather.com.cn/data/"
+	url := baseUrl + provinceCode + cityCode + newCode + ".html"
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("读取响应失败: %w", err)
+	}
+
+	// 解析数据
+	err = json.Unmarshal(body, &zoneMap)
+	if err != nil {
+		return fmt.Errorf("解析失败: %w", err)
+	}
+
+	fmt.Printf("状态码: %d\n", resp.StatusCode)
+	fmt.Println("响应内容:")
+	fmt.Println(string(body))
 
 	return nil
 }
@@ -246,4 +303,24 @@ func handleC(inputs []string) {
 
 	// 输出所有值，空格分隔
 	fmt.Println(strings.Join(values, " "))
+}
+
+func handleD(inputs []string) {
+	if inputs == nil || len(inputs) == 0 {
+		fmt.Println("错误：缺少参数，城市代码")
+	}
+
+	err := getWeatherData(inputs[0])
+	if err != nil {
+		println(err)
+		return
+	}
+
+	//var values []string
+	//for k, v := range zoneMap {
+	//	values = append(values, v+"("+k+")")
+	//}
+	//
+	//// 输出所有值，空格分隔
+	//fmt.Println(strings.Join(values, " "))
 }
