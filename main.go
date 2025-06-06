@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"go-learn/weather/forecast/test1"
+	"go-learn/server/http/static"
 	"log"
 	"net/http"
 	"os"
@@ -15,7 +15,8 @@ func main() {
 	//calculator.StartCalculator1()
 	//calculator.StartCalculator2()
 	//statistics.StartStatistics1()
-	test1.StartWeatherForecast1()
+	//test1.StartWeatherForecast1()
+	static.StartServer()
 }
 
 func startServer() {
