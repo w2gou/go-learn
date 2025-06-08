@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	module "go-learn/model"
 	"go-learn/server/http/static"
 	"log"
 	"net/http"
@@ -16,7 +17,14 @@ func main() {
 	//calculator.StartCalculator2()
 	//statistics.StartStatistics1()
 	//test1.StartWeatherForecast1()
-	static.StartServer()
+
+	var m module.Module
+	m = &static.HttpServerModel1{}
+
+	if err := m.StartServer(); err != nil {
+		fmt.Println("Module failed to start:", err)
+		os.Exit(1)
+	}
 }
 
 func startServer() {
