@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	module "go-learn/model"
-	"go-learn/server/http/static"
+	"go-learn/server/socket/chatroom"
 	"log"
 	"net/http"
 	"os"
@@ -19,7 +19,7 @@ func main() {
 	//test1.StartWeatherForecast1()
 
 	var m module.Module
-	m = &static.HttpServerModel1{}
+	m = &chatroom.WebSocketChatRoomServer1Model{}
 
 	if err := m.StartServer(); err != nil {
 		fmt.Println("Module failed to start:", err)
