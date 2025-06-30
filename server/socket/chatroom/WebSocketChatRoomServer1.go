@@ -1,7 +1,9 @@
 package chatroom
 
 import (
+	"encoding/json"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
@@ -9,12 +11,6 @@ import (
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true }, // 允许跨域
-}
-
-// 客户端连接结构体
-type Client struct {
-	conn *websocket.Conn
-	send chan []byte
 }
 
 // 所有客户端列表
@@ -35,9 +31,13 @@ func (m *WebSocketChatRoomServer1Model) StartServer() error {
 }
 
 func startServer() {
+	initDB()
+
 	fs := http.FileServer(http.Dir("resource/server/socket/chatRoom"))
 	http.Handle("/", fs)
 
+	http.HandleFunc("/register", handleRegister)
+	http.HandleFunc("/login", handleLogin)
 	http.HandleFunc("/chat", handleConnections)
 
 	go handleBroadcast()
@@ -95,5 +95,39 @@ func handleBroadcast() {
 				delete(clients, client)
 			}
 		}
+	}
+}
+
+func handleRegister(w http.ResponseWriter, r *http.Request) {
+	var user User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "无效参数", http.StatusBadRequest)
+		return
+	}
+
+	_, err := db.Exec("INSERT INTO users (username, password) VALUES (?, ?)", user.Username, user.Password)
+	if err != nil {
+		http.Error(w, "用户名已存在", http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func handleLogin(w http.ResponseWriter, r *http.Request) {
+	var user User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "无效参数", http.StatusBadRequest)
+		return
+	}
+
+	var count int
+	row := db.QueryRow("SELECT COUNT(*) FROM users WHERE username=? AND password=?", user.Username, user.Password)
+	row.Scan(&count)
+
+	if count == 1 {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		http.Error(w, "用户名或密码错误", http.StatusUnauthorized)
 	}
 }

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Go WebSocket Chat</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
+
+        h1 {
+            margin-top: 20px;
+            color: #333;
+        }
+
+        #chat-container {
+            display: flex;
+            flex-direction: column;
+            width: 90%;
+            max-width: 600px;
+            height: 80vh;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        #messages {
+            flex: 1;
+            list-style: none;
+            padding: 16px;
+            margin: 0;
+            overflow-y: auto;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #messages li {
+            margin-bottom: 12px;
+            background: #e0f0ff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            max-width: 80%;
+            word-break: break-word;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #input-area {
+            display: flex;
+            padding: 12px;
+            gap: 10px;
+            background-color: #f0f2f5;
+        }
+
+        #msg {
+            flex: 1;
+            padding: 10px 14px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            outline: none;
+        }
+
+        button {
+            background-color: #007bff;
+            border: none;
+            color: white;
+            padding: 10px 16px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Scrollbar style (optional) */
+        #messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        #messages::-webkit-scrollbar-thumb {
+            background: #bbb;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+<h1>💬 Go WebSocket Chat</h1>
+
+<div id="chat-container">
+    <ul id="messages"></ul>
+
+    <div id="input-area">
+        <input id="msg" type="text" placeholder="Type your message..." autocomplete="off" />
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    const ws = new WebSocket("ws://" + location.host + "/chat");
+
+    ws.onmessage = function (event) {
+        const messages = document.getElementById("messages");
+        const li = document.createElement("li");
+        li.innerText = event.data;
+        messages.appendChild(li);
+        messages.scrollTop = messages.scrollHeight;
+    };
+
+    function sendMessage() {
+        const input = document.getElementById("msg");
+        const message = input.value.trim();
+        if (message) {
+            ws.send(message);
+            input.value = "";
+        }
+    }
+
+    // Press Enter to send
+    document.getElementById("msg").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+            sendMessage();
+        }
+    });
+</script>
+</body>
+</html>

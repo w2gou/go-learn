@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Go WebSocket 聊天室</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0; padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #container {
+            width: 400px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .tab {
+            display: none;
+            padding: 20px;
+        }
+        .tab.active { display: block; }
+
+        h2 { margin-top: 0; text-align: center; }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #007bff;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+
+        .switch-link {
+            text-align: center;
+            margin-top: 12px;
+            color: #007bff;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #chat {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+        }
+
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #messages div {
+            margin: 5px 0;
+            padding: 8px 12px;
+            background: #e1f5fe;
+            border-radius: 6px;
+        }
+
+        #input-area {
+            display: flex;
+            padding: 10px;
+            gap: 10px;
+        }
+
+        #input-area input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        #input-area button {
+            padding: 10px 14px;
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <!-- 登录 Tab -->
+    <div id="login-tab" class="tab active">
+        <h2>登录</h2>
+        <input id="login-username" type="text" placeholder="用户名" />
+        <input id="login-password" type="password" placeholder="密码" />
+        <button onclick="login()">登录</button>
+        <div class="switch-link" onclick="switchTab('register-tab')">还没有账号？注册</div>
+    </div>
+
+    <!-- 注册 Tab -->
+    <div id="register-tab" class="tab">
+        <h2>注册</h2>
+        <input id="register-username" type="text" placeholder="用户名" />
+        <input id="register-password" type="password" placeholder="密码" />
+        <button onclick="register()">注册</button>
+        <div class="switch-link" onclick="switchTab('login-tab')">已有账号？登录</div>
+    </div>
+
+    <!-- 聊天室 Tab -->
+    <div id="chat-tab" class="tab">
+        <h2 id="welcome-title">聊天室</h2>
+        <div id="chat">
+            <div id="messages"></div>
+            <div id="input-area">
+                <input id="msg" type="text" placeholder="输入消息..." />
+                <button onclick="sendMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let ws = null;
+    let currentUser = "";
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+    }
+
+    function login() {
+        const username = document.getElementById("login-username").value.trim();
+        const password = document.getElementById("login-password").value.trim();
+
+        fetch("/login", {
+            method: "POST",
+            body: JSON.stringify({ username, password }),
+            headers: { "Content-Type": "application/json" }
+        }).then(res => {
+            if (res.ok) {
+                currentUser = username;
+                enterChat();
+            } else {
+                alert("登录失败");
+            }
+        });
+    }
+
+    function register() {
+        const username = document.getElementById("register-username").value.trim();
+        const password = document.getElementById("register-password").value.trim();
+
+        fetch("/register", {
+            method: "POST",
+            body: JSON.stringify({ username, password }),
+            headers: { "Content-Type": "application/json" }
+        }).then(res => {
+            if (res.ok) {
+                currentUser = username;
+                enterChat();
+            } else {
+                alert("注册失败：用户名已存在");
+            }
+        });
+    }
+
+    function enterChat() {
+        switchTab("chat-tab");
+        document.getElementById("welcome-title").innerText = `欢迎，${currentUser}`;
+        startWebSocket();
+    }
+
+    function startWebSocket() {
+        ws = new WebSocket("ws://" + location.host + "/chat?username=" + encodeURIComponent(currentUser));
+        ws.onmessage = event => {
+            const msg = JSON.parse(event.data);
+            const div = document.createElement("div");
+            div.textContent = `${msg.username}: ${msg.content}`;
+            document.getElementById("messages").appendChild(div);
+            document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+        };
+    }
+
+    function sendMessage() {
+        const input = document.getElementById("msg");
+        const message = input.value.trim();
+        if (message && ws) {
+            ws.send(JSON.stringify({ content: message }));
+            input.value = "";
+        }
+    }
+
+    // 按回车发送
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && document.getElementById("chat-tab").classList.contains("active")) {
+            sendMessage();
+        }
+    });
+</script>
+</body>
+</html>
