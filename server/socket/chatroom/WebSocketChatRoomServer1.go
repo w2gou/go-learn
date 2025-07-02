@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
+	"sync"
 )
 
 var upgrader = websocket.Upgrader{
@@ -17,7 +18,9 @@ var upgrader = websocket.Upgrader{
 var clients = make(map[*Client]bool)
 
 // 全局广播通道
-var broadcast = make(chan []byte)
+var broadcast = make(chan Message)
+
+var mu sync.Mutex
 
 type WebSocketChatRoomServer1Model struct{}
 
@@ -38,7 +41,7 @@ func startServer() {
 
 	http.HandleFunc("/register", handleRegister)
 	http.HandleFunc("/login", handleLogin)
-	http.HandleFunc("/chat", handleConnections)
+	http.HandleFunc("/chat", handleWebSocket)
 
 	go handleBroadcast()
 
@@ -47,54 +50,49 @@ func startServer() {
 }
 
 // 处理 WebSocket 请求
-func handleConnections(w http.ResponseWriter, r *http.Request) {
-	// 升级 HTTP 为 WebSocket
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		fmt.Println("Upgrade error:", err)
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		http.Error(w, "Missing username", http.StatusBadRequest)
 		return
 	}
-	defer ws.Close()
 
-	client := &Client{conn: ws, send: make(chan []byte)}
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		fmt.Println("WS upgrade error:", err)
+		return
+	}
+
+	client := &Client{conn: ws, username: username}
+	mu.Lock()
 	clients[client] = true
+	mu.Unlock()
 
-	go handleMessagesFromClient(client)
+	defer func() {
+		mu.Lock()
+		delete(clients, client)
+		mu.Unlock()
+		ws.Close()
+	}()
 
 	for {
-		_, msg, err := ws.ReadMessage()
-		if err != nil {
-			delete(clients, client)
+		var msg Message
+		if err := ws.ReadJSON(&msg); err != nil {
 			break
 		}
+		msg.Username = username
 		broadcast <- msg
 	}
 }
 
-// 客户端消息处理
-func handleMessagesFromClient(client *Client) {
-	for msg := range client.send {
-		err := client.conn.WriteMessage(websocket.TextMessage, msg)
-		if err != nil {
-			client.conn.Close()
-			delete(clients, client)
-			break
-		}
-	}
-}
-
-// 消息广播器
 func handleBroadcast() {
 	for {
 		msg := <-broadcast
+		mu.Lock()
 		for client := range clients {
-			select {
-			case client.send <- msg:
-			default:
-				close(client.send)
-				delete(clients, client)
-			}
+			client.conn.WriteJSON(msg)
 		}
+		mu.Unlock()
 	}
 }
 

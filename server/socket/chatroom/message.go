@@ -4,8 +4,8 @@ import "github.com/gorilla/websocket"
 
 // 客户端连接结构体
 type Client struct {
-	conn *websocket.Conn
-	send chan []byte
+	conn     *websocket.Conn
+	username string
 }
 
 type User struct {

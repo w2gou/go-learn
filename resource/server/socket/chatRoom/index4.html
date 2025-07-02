@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>聊天室</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: #f5f7fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #container {
+            width: 400px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .tab {
+            display: none;
+            padding: 20px;
+        }
+        .tab.active { display: block; }
+        h2 { margin-top: 0; text-align: center; }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #007bff;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        .switch-link {
+            text-align: center;
+            margin-top: 12px;
+            color: #007bff;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #chat-container {
+            display: none;
+            flex-direction: column;
+            height: 600px;
+            width: 1000px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        #header {
+            padding: 12px 20px;
+            background: #f0f0f0;
+            font-weight: bold;
+            font-size: 16px;
+            border-bottom: 1px solid #ccc;
+        }
+        #messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f9f9f9;
+        }
+        .message-user { font-weight: bold; color: #333; margin-bottom: 4px; }
+        .message-content {
+            padding: 10px 12px;
+            background: #fff;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            display: inline-block;
+            max-width: 70%;
+        }
+        .timestamp {
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+            margin: 12px 0;
+        }
+        #input-area {
+            padding: 16px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+        #msg {
+            width: 100%;
+            padding: 12px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: none;
+            height: 60px;
+        }
+        #send-btn {
+            margin-top: 10px;
+            padding: 10px;
+            background: #007aff;
+            border: none;
+            color: white;
+            font-size: 15px;
+            border-radius: 4px;
+            align-self: flex-end;
+            cursor: pointer;
+        }
+        #send-btn:hover { background-color: #005fcc; }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <div id="login-tab" class="tab active">
+        <h2>登录</h2>
+        <input id="login-username" type="text" placeholder="用户名" />
+        <input id="login-password" type="password" placeholder="密码" />
+        <button onclick="login()">登录</button>
+        <div class="switch-link" onclick="switchTab('register-tab')">还没有账号？注册</div>
+    </div>
+    <div id="register-tab" class="tab">
+        <h2>注册</h2>
+        <input id="register-username" type="text" placeholder="用户名" />
+        <input id="register-password" type="password" placeholder="密码" />
+        <button onclick="register()">注册</button>
+        <div class="switch-link" onclick="switchTab('login-tab')">已有账号？登录</div>
+    </div>
+</div>
+
+<div id="chat-container">
+    <div id="header">临时聊天室</div>
+    <div id="messages"></div>
+    <div id="input-area">
+        <textarea id="msg" placeholder="请输入消息..."></textarea>
+        <button id="send-btn" onclick="sendMessage()">发送</button>
+    </div>
+</div>
+
+<script>
+    let ws = null;
+    let currentUser = "";
+    let lastTimestamp = "";
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+    }
+
+    function login() {
+        const username = document.getElementById("login-username").value.trim();
+        const password = document.getElementById("login-password").value.trim();
+
+        fetch("/login", {
+            method: "POST",
+            body: JSON.stringify({ username, password }),
+            headers: { "Content-Type": "application/json" }
+        }).then(res => {
+            if (res.ok) {
+                currentUser = username;
+                enterChat();
+            } else {
+                alert("登录失败");
+            }
+        });
+    }
+
+    function register() {
+        const username = document.getElementById("register-username").value.trim();
+        const password = document.getElementById("register-password").value.trim();
+
+        fetch("/register", {
+            method: "POST",
+            body: JSON.stringify({ username, password }),
+            headers: { "Content-Type": "application/json" }
+        }).then(res => {
+            if (res.ok) {
+                currentUser = username;
+                enterChat();
+            } else {
+                alert("注册失败：用户名已存在");
+            }
+        });
+    }
+
+    function enterChat() {
+        document.getElementById("container").style.display = "none";
+        document.getElementById("chat-container").style.display = "flex";
+        startWebSocket();
+    }
+
+    function startWebSocket() {
+        ws = new WebSocket("ws://" + location.host + "/chat?username=" + encodeURIComponent(currentUser));
+        ws.onmessage = event => {
+            const msg = JSON.parse(event.data);
+            const now = new Date();
+            const timestamp = now.toLocaleDateString() + ' ' + now.toLocaleTimeString().slice(0, 5);
+
+            if (timestamp !== lastTimestamp) {
+                const timeDiv = document.createElement("div");
+                timeDiv.className = "timestamp";
+                timeDiv.textContent = timestamp;
+                document.getElementById("messages").appendChild(timeDiv);
+                lastTimestamp = timestamp;
+            }
+
+            const msgDiv = document.createElement("div");
+            msgDiv.className = "message";
+
+            const userDiv = document.createElement("div");
+            userDiv.className = "message-user";
+            userDiv.textContent = msg.username;
+
+            const contentDiv = document.createElement("div");
+            contentDiv.className = "message-content";
+            contentDiv.textContent = msg.content;
+
+            msgDiv.appendChild(userDiv);
+            msgDiv.appendChild(contentDiv);
+
+            document.getElementById("messages").appendChild(msgDiv);
+            document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+        };
+    }
+
+    function sendMessage() {
+        const input = document.getElementById("msg");
+        const content = input.value.trim();
+        if (content && ws) {
+            ws.send(JSON.stringify({ content }));
+            input.value = "";
+        }
+    }
+
+    document.getElementById("msg").addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+</script>
+</body>
+</html>
