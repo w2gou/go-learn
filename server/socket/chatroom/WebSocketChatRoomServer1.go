@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"sync"
@@ -15,12 +17,16 @@ var upgrader = websocket.Upgrader{
 }
 
 // 所有客户端列表
-var clients = make(map[*Client]bool)
+var clients = make(map[*websocket.Conn]string)
 
 // 全局广播通道
 var broadcast = make(chan Message)
 
 var mu sync.Mutex
+
+var tokenMap = make(map[string]string) // token -> username
+
+var usersConn = make(map[string]*websocket.Conn) // username -> conn
 
 type WebSocketChatRoomServer1Model struct{}
 
@@ -51,48 +57,80 @@ func startServer() {
 
 // 处理 WebSocket 请求
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	username := r.URL.Query().Get("username")
+	token := r.URL.Query().Get("token")
+	username := tokenMap[token]
 	if username == "" {
-		http.Error(w, "Missing username", http.StatusBadRequest)
+		http.Error(w, "未认证", http.StatusUnauthorized)
 		return
 	}
 
-	ws, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Println("WS upgrade error:", err)
+		log.Println("升级失败:", err)
 		return
 	}
+	defer conn.Close()
 
-	client := &Client{conn: ws, username: username}
 	mu.Lock()
-	clients[client] = true
+	clients[conn] = username
+	usersConn[username] = conn
+	sendOnlineUsers() // 广播在线用户列表
 	mu.Unlock()
-
-	defer func() {
-		mu.Lock()
-		delete(clients, client)
-		mu.Unlock()
-		ws.Close()
-	}()
 
 	for {
 		var msg Message
-		if err := ws.ReadJSON(&msg); err != nil {
+		err := conn.ReadJSON(&msg)
+		if err != nil {
+			log.Println("读取失败:", err)
 			break
 		}
 		msg.Username = username
 		broadcast <- msg
 	}
+
+	mu.Lock()
+	delete(clients, conn)
+	delete(usersConn, username)
+	sendOnlineUsers()
+	mu.Unlock()
 }
 
 func handleBroadcast() {
 	for {
 		msg := <-broadcast
 		mu.Lock()
-		for client := range clients {
-			client.conn.WriteJSON(msg)
+		if msg.To != "" {
+			// 私聊
+			if toConn, ok := usersConn[msg.To]; ok {
+				_ = toConn.WriteJSON(msg)
+			}
+			if selfConn, ok := usersConn[msg.Username]; ok {
+				_ = selfConn.WriteJSON(msg) // 回显给自己
+			}
+		} else {
+			// 群聊
+			for conn := range clients {
+				_ = conn.WriteJSON(msg)
+			}
 		}
 		mu.Unlock()
+	}
+}
+
+func sendOnlineUsers() {
+	usernames := make([]string, 0)
+	for name := range usersConn {
+		usernames = append(usernames, name)
+	}
+	data, _ := json.Marshal(struct {
+		Type  string   `json:"type"`
+		Users []string `json:"users"`
+	}{
+		Type:  "online-users",
+		Users: usernames,
+	})
+	for conn := range clients {
+		conn.WriteMessage(websocket.TextMessage, data)
 	}
 }
 
@@ -103,13 +141,21 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := db.Exec("INSERT INTO users (username, password) VALUES (?, ?)", user.Username, user.Password)
+	// 生成 UUID
+	user.ID = uuid.New().String()
+
+	// 加密密码
+	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+
+	err = insertUser(user.ID, user.Username, string(hash))
 	if err != nil {
 		http.Error(w, "用户名已存在", http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	token := uuid.New().String()
+	tokenMap[token] = user.Username
+	json.NewEncoder(w).Encode(Response{Success: true, Token: token})
 }
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -119,13 +165,18 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var count int
-	row := db.QueryRow("SELECT COUNT(*) FROM users WHERE username=? AND password=?", user.Username, user.Password)
-	row.Scan(&count)
-
-	if count == 1 {
-		w.WriteHeader(http.StatusOK)
-	} else {
-		http.Error(w, "用户名或密码错误", http.StatusUnauthorized)
+	selectedUser, err := selectUser(user.Username)
+	if err != nil {
+		json.NewEncoder(w).Encode(Response{Success: false})
+		return
 	}
+
+	if bcrypt.CompareHashAndPassword([]byte(selectedUser.Password), []byte(user.Password)) != nil {
+		json.NewEncoder(w).Encode(Response{Success: false})
+		return
+	}
+
+	token := uuid.New().String()
+	tokenMap[token] = user.Username
+	json.NewEncoder(w).Encode(Response{Success: true, Token: token})
 }

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>聊天室</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+    #container { display: flex; height: 100vh; }
+    #sidebar {
+      width: 200px;
+      background: #fff;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+    }
+    #user-list { list-style: none; padding: 0; margin: 0; flex: 1; overflow-y: auto; }
+    #user-list li {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+    #user-list li:hover { background: #f0f0f0; }
+    #chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    #messages {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      background: #f9f9f9;
+    }
+    .message {
+      margin-bottom: 10px;
+    }
+    .private { color: #e91e63; }
+    #input-area {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      background: #fff;
+    }
+    #msg {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+    }
+    #send-btn {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    #header {
+      padding: 10px;
+      background: #007bff;
+      color: white;
+      text-align: center;
+    }
+    #logout-btn {
+      padding: 10px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<div id="container">
+  <div id="sidebar">
+    <div id="header">在线用户</div>
+    <ul id="user-list"></ul>
+    <button id="logout-btn" onclick="logout()">退出登录</button>
+  </div>
+  <div id="chat">
+    <div id="messages"></div>
+    <div id="input-area">
+      <input type="text" id="msg" placeholder="输入消息..." />
+      <button id="send-btn">发送</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const token = localStorage.getItem("token");
+  const username = localStorage.getItem("username");
+  if (!token || !username) {
+    window.location.href = "/login.html";
+  }
+
+  let currentTo = "";  // 当前私聊对象
+  const ws = new WebSocket("ws://" + location.host + "/chat?token=" + token);
+
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === "online-users") {
+      updateUserList(msg.users);
+      return;
+    }
+    const div = document.createElement("div");
+    div.className = "message";
+    if (msg.to && msg.to !== "") {
+      div.innerHTML = `<strong class="private">[私聊 ${msg.username} → ${msg.to}]</strong>: ${msg.content}`;
+    } else {
+      div.innerHTML = `<strong>${msg.username}</strong>: ${msg.content}`;
+    }
+    document.getElementById("messages").appendChild(div);
+    document.getElementById("messages").scrollTop = 99999;
+  };
+
+  document.getElementById("send-btn").onclick = () => {
+    const content = document.getElementById("msg").value.trim();
+    if (!content) return;
+    ws.send(JSON.stringify({ content, to: currentTo }));
+    document.getElementById("msg").value = "";
+  };
+
+  function updateUserList(users) {
+    const ul = document.getElementById("user-list");
+    ul.innerHTML = "";
+    users.forEach(u => {
+      if (u === username) return; // 不显示自己
+      const li = document.createElement("li");
+      li.textContent = u;
+      li.onclick = () => {
+        currentTo = u;
+        alert(`你正在私聊：${u}`);
+      };
+      ul.appendChild(li);
+    });
+  }
+
+  function logout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    window.location.href = "/login1.html";
+  }
+</script>
+
+</body>
+</html>

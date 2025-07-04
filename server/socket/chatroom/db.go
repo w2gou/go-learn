@@ -1,6 +1,8 @@
 package chatroom
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 var db *sql.DB
 
@@ -15,4 +17,17 @@ func initDB() {
 	if err = db.Ping(); err != nil {
 		panic("无法连接数据库: " + err.Error())
 	}
+}
+
+func selectUser(username string) (User, error) {
+	var user User
+	err := db.QueryRow("SELECT id, password FROM users WHERE username = ?", username).Scan(&user.ID, &user.Password)
+	user.Username = username
+	return user, err
+}
+
+func insertUser(id string, username string, password string) error {
+	_, err := db.Exec("INSERT INTO users (id, username, password) VALUES (?, ?, ?)",
+		id, username, password)
+	return err
 }

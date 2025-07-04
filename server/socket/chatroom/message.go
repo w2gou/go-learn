@@ -9,6 +9,7 @@ type Client struct {
 }
 
 type User struct {
+	ID       string `json:"id"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
@@ -16,4 +17,10 @@ type User struct {
 type Message struct {
 	Username string `json:"username"`
 	Content  string `json:"content"`
+	To       string `json:"to,omitempty"`
+}
+
+type Response struct {
+	Success bool   `json:"success"`
+	Token   string `json:"token,omitempty"`
 }
