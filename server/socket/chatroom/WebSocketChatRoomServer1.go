@@ -47,6 +47,7 @@ func startServer() {
 
 	http.HandleFunc("/register", handleRegister)
 	http.HandleFunc("/login", handleLogin)
+	http.HandleFunc("/logout", handleLogout)
 	http.HandleFunc("/chat", handleWebSocket)
 
 	go handleBroadcast()
@@ -179,4 +180,14 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	token := uuid.New().String()
 	tokenMap[token] = user.Username
 	json.NewEncoder(w).Encode(Response{Success: true, Token: token})
+}
+
+func handleLogout(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	mu.Lock()
+	delete(clients, usersConn[tokenMap[token]])
+	delete(usersConn, tokenMap[token])
+	delete(tokenMap, token)
+	sendOnlineUsers()
+	w.Write([]byte("logout success"))
 }
