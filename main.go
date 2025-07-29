@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"go-learn/cli/downloader"
 	module "go-learn/model"
-	"go-learn/server/socket/chatroom"
 	"log"
 	"net/http"
 	"os"
@@ -19,7 +19,7 @@ func main() {
 	//test1.StartWeatherForecast1()
 
 	var m module.Module
-	m = &chatroom.WebSocketChatRoomServer1Model{}
+	m = &downloader.GoDownLoaderModel{}
 
 	if err := m.StartServer(); err != nil {
 		fmt.Println("Module failed to start:", err)
