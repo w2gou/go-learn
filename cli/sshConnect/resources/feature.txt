@@ -1,0 +1,130 @@
+📝 功能列表
+1. 连接管理
+
+新建连接
+
+保存连接参数（名称、IP、端口、用户名、认证方式[密码/密钥]、本地密钥路径等）
+
+本地保存配置文件（例如 ~/.gossh/config.json）
+
+查看连接列表
+
+显示已保存的连接（别名 + IP）
+
+删除连接
+
+删除指定的连接配置
+
+更新连接
+
+修改某个连接的配置（密码、key 等）
+
+2. SSH 交互
+
+建立 SSH 连接
+
+根据已保存的连接配置直接连接
+
+或者命令行直接输入参数（gossh connect --host 1.2.3.4 --user root）
+
+交互式命令行
+
+提供原生 ssh 体验（执行远程命令，实时回显）
+
+执行单条命令
+
+支持 gossh run <alias> "ls -al /home"
+
+3. SFTP 功能
+
+文件上传
+
+gossh upload <alias> local_file remote_path
+
+文件下载
+
+gossh download <alias> remote_file local_path
+
+文件列表
+
+gossh ls <alias> remote_path
+
+删除/移动/重命名
+
+基础文件操作
+
+4. 安全与认证
+
+支持 密码认证
+
+支持 私钥认证
+
+支持 交互式密码输入（避免明文保存）
+
+可选 保存密码/不保存密码
+
+5. 用户体验优化
+
+支持 命令行补全（可选，bash/zsh/fish）
+
+配置文件加密（例如 AES 对称加密，用户提供主密码）
+
+支持 多会话并发连接（高级功能）
+
+支持 批量执行命令（对多个服务器）
+
+📅 开发计划（迭代式）
+阶段 1：项目初始化
+
+ 创建 Go CLI 项目（推荐使用 Cobra
+ 框架做命令行解析）
+
+ 确定配置文件格式（JSON/YAML）
+
+ 实现 init 命令（生成默认配置目录）
+
+阶段 2：连接管理
+
+ 实现 add 命令（保存连接参数）
+
+ 实现 list 命令（显示已保存的连接）
+
+ 实现 delete 命令
+
+ 实现 update 命令
+
+阶段 3：SSH 功能
+
+ 基础连接（gossh connect <alias>）
+
+ 交互式 Shell（利用 golang.org/x/crypto/ssh）
+
+ 单条命令执行（gossh run <alias> "ls -l"）
+
+阶段 4：SFTP 功能
+
+ 文件上传（upload）
+
+ 文件下载（download）
+
+ 目录操作（ls, mkdir, rm）
+
+阶段 5：增强功能
+
+ 支持私钥认证（RSA/Ed25519）
+
+ 支持配置文件加密（AES）
+
+ 命令行补全（bash/zsh/fish）
+
+ 批量执行命令（多服务器）
+
+📦 技术栈与依赖
+
+CLI 框架：spf13/cobra
+
+SSH/SFTP：golang.org/x/crypto/ssh + pkg/sftp
+
+配置文件：encoding/json / gopkg.in/yaml.v3
+
+可选安全加密：golang.org/x/crypto/nacl/secretbox / AES
