@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"go-learn/cli/sshConnect/version1"
+	"go-learn/cli/sshConnect/version2"
 	module "go-learn/model"
 	"log"
 	"net/http"
@@ -19,7 +19,7 @@ func main() {
 	//test1.StartWeatherForecast1()
 
 	var m module.Module
-	m = &version1.GoSshConnectModel{}
+	m = &version2.GoSshConnectModel{}
 
 	if err := m.StartServer(); err != nil {
 		fmt.Println("Module failed to start:", err)
