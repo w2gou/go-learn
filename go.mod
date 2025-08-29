@@ -12,6 +12,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/crypto v0.41.0
+	golang.org/x/term v0.34.0
 )
 
 require (
