@@ -1,0 +1,51 @@
+# Go-Transfer 配置文件示例
+# 支持 YAML 格式，保存为 ~/.go-transfer.yaml 或项目根目录下的 .go-transfer.yaml
+
+# 服务器配置
+server:
+  host: ""                    # 绑定主机地址（空为自动检测）
+  port: "8080"               # 服务器端口
+  auth: false                # 是否启用HTTP基础认证
+  username: "admin"          # 认证用户名
+  password: ""               # 认证密码（空则随机生成）
+  max_connections: 100       # 最大并发连接数
+  timeout: "30s"            # 请求超时时间
+  max_file_size: 1073741824 # 最大文件大小（1GB）
+
+  # Goroutine池配置（高性能并发架构）
+  use_worker_pool: true     # 是否启用Goroutine工作池（推荐）
+  pool_size: 0              # 工作者池大小（0=自动：max_connections/2）
+  queue_size: 0             # 任务队列大小（0=自动：max_connections*2）
+  semaphore_size: 0         # 信号量大小（0=自动：max_connections）
+
+# 二维码配置
+qr:
+  disabled: false           # 是否禁用二维码显示
+  size: "medium"           # 二维码大小：small, medium, large
+
+# 日志配置
+logging:
+  verbose: false           # 是否启用详细日志
+  format: "text"          # 日志格式：text, json
+
+# 高级配置
+advanced:
+  # 是否启用文件缓存
+  enable_cache: true
+
+  # 缓存过期时间
+  cache_ttl: "1h"
+
+  # 是否启用压缩
+  enable_compression: true
+
+  # 压缩级别 (1-9)
+  compression_level: 6
+
+  # 是否显示隐藏文件
+  show_hidden: false
+
+  # 自定义MIME类型
+  mime_types:
+    ".md": "text/markdown"
+    ".log": "text/plain"
