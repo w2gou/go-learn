@@ -2,7 +2,6 @@ package sort
 
 import (
 	"math/rand"
-	"time"
 )
 
 // 选择排序
@@ -132,7 +131,6 @@ func QuickSort(nums []int) {
 	if len(nums) < 2 {
 		return
 	}
-	rand.Seed(time.Now().UnixNano())
 	quickSort(nums, 0, len(nums)-1)
 }
 

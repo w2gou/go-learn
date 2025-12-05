@@ -227,7 +227,7 @@ type Tire struct {
 	isLeaf   bool
 }
 
-func Constructor() Tire {
+func (t *Tire) Constructor() Tire {
 	return Tire{}
 }
 
@@ -421,5 +421,83 @@ func hot198_1(nums []int) int {
 }
 
 func hot169_1(nums []int) int {
-	
+	length := len(nums)
+	var bigInts []int
+	if length%2 == 0 {
+		bigInts = nums[:length/2]
+	} else {
+		bigInts = nums[:length/2+1]
+	}
+	for i := 0; i < len(bigInts); i++ {
+		if nums[i] > nums[i+1] {
+			nums[i], nums[i+1] = nums[i+1], nums[i]
+		}
+	}
+	return bigInts[len(bigInts)-1]
+}
+
+func hot238_1(nums []int) []int {
+	numsL := make([]int, len(nums))
+	numsR := make([]int, len(nums))
+	for i := 0; i < len(numsL); i++ {
+		if i == 0 {
+			numsL[i] = nums[i]
+		} else {
+			numsL[i] = nums[i] * numsL[i-1]
+		}
+	}
+	for i := len(numsR) - 1; i >= 0; i-- {
+		if i == len(numsR) {
+			numsL[i] = nums[i]
+		} else {
+			numsL[i] = nums[i] * numsL[i+1]
+		}
+	}
+	answer := make([]int, len(nums))
+	for i := 0; i < len(numsL); i++ {
+		if i == 0 {
+			answer[i] = numsR[i+1]
+		} else if i == len(numsL)-1 {
+			answer[i] = numsL[i-1]
+		} else {
+			answer[i] = numsL[i-1] * numsR[i+1]
+		}
+	}
+	return answer
+}
+
+// hot155
+type MinStack struct {
+	top *TreeNode
+}
+
+func (t *MinStack) Constructor() MinStack {
+	return MinStack{}
+}
+
+func (t *MinStack) Push(val int) {
+	newNode := &TreeNode{Val: val}
+	newNode.Left = t.top
+	if t.top == nil || t.top.Right.Val > val {
+		newNode.Right = newNode
+	} else {
+		newNode.Right = t.top.Right
+	}
+	t.top = newNode
+}
+
+func (t *MinStack) Pop() {
+	t.top = t.top.Left
+}
+
+func (t *MinStack) Top() int {
+	return t.top.Val
+}
+
+func (t *MinStack) GetMin() int {
+	return t.top.Right.Val
+}
+
+func hot152_1(nums []int) int {
+
 }
