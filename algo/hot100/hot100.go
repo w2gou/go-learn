@@ -498,6 +498,32 @@ func (t *MinStack) GetMin() int {
 	return t.top.Right.Val
 }
 
-func hot152_1(nums []int) int {
+func hot152(nums []int) int {
+	maxs := make([]int, len(nums))
+	mins := make([]int, len(nums))
 
+	for i, num := range nums {
+		maxs[i] = num
+		mins[i] = num
+	}
+
+	for i, num := range nums {
+		if i == 0 {
+			continue
+		}
+		maxs[i] = max(maxs[i-1]*num, mins[i-1]*num, num)
+		mins[i] = min(maxs[i-1]*num, mins[i-1]*num, num)
+	}
+
+	maxi := maxs[0]
+	for _, num := range maxs {
+		maxi = max(maxi, num)
+	}
+
+	return maxi
 }
+
+// 148. 排序链表
+//func sortList(head *ListNode) *ListNode {
+//
+//}
